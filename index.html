@@ -187,21 +187,41 @@
   .sc-tick.x{text-anchor:middle}
   .sc-tick.y{text-anchor:end}
   .sc-axtitle{fill:var(--muted);font-size:9.5px;font-weight:700;text-anchor:middle;letter-spacing:.02em}
-  .sc-dot{transition:r .55s cubic-bezier(.34,1.4,.5,1),opacity .4s ease;cursor:pointer}
-  .sc-dot.other{fill:#64748b;opacity:.5}
-  .sc-dot.wc{fill:url(#scGrad);opacity:.95}
-  .sc-dot.sel{stroke:#fff;stroke-width:1.5;opacity:1;filter:drop-shadow(0 0 5px rgba(52,224,161,.85))}
+  .sc-dot{transition:r .5s cubic-bezier(.34,1.4,.5,1),opacity .4s ease;cursor:pointer;opacity:.92}
+  .sc-dot.over{fill:var(--accent)}
+  .sc-dot.under{fill:var(--away)}
+  .sc-dot.mid{fill:#64748b;opacity:.55}
+  .sc-dot.wc{stroke:rgba(255,255,255,.9);stroke-width:1.4}
+  .sc-dot.sel{stroke:#fff;stroke-width:2;opacity:1;filter:drop-shadow(0 0 5px rgba(255,255,255,.7))}
+  .sc-diag{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:5 4;opacity:.6}
   .sc-lab{fill:var(--text);font-size:10px;font-weight:700;paint-order:stroke;stroke:rgba(10,14,20,.85);stroke-width:3px;stroke-linejoin:round}
-  .scatter-legend{display:flex;gap:18px;justify-content:center;margin-top:12px;font-size:.74rem;color:var(--muted);font-weight:600}
+  .scatter-legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:.74rem;color:var(--muted);font-weight:600}
   .scatter-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
-  .scatter-legend .d-wc{background:linear-gradient(135deg,var(--accent-2),var(--accent))}
-  .scatter-legend .d-other{background:#64748b}
-  .scatter-legend .d-trend{background:none;border-top:2px dashed var(--muted);border-radius:0;width:14px;height:0}
-  .sc-trend{fill:none;stroke:var(--muted);stroke-width:1.3;stroke-dasharray:5 4;opacity:.75}
+  .scatter-legend .d-over{background:var(--accent)}
+  .scatter-legend .d-under{background:var(--away)}
+  .scatter-legend .d-wc{background:transparent;border:1.5px solid #fff}
+  .scatter-legend .d-diag{background:none;border-top:2px dashed var(--muted);border-radius:0;width:14px;height:0}
   .sc-ro-verdict{flex-basis:100%;font-size:.8rem;font-weight:700;margin-top:2px}
   .sc-ro-verdict.up{color:var(--accent)}
   .sc-ro-verdict.down{color:var(--away)}
   .sc-ro-verdict.mid{color:var(--muted)}
+
+  /* ---------- Overperformance bar chart ---------- */
+  .ob-list{display:flex;flex-direction:column;gap:5px}
+  .ob-row{display:grid;grid-template-columns:118px 1fr 40px;gap:8px;align-items:center;cursor:pointer}
+  .ob-row:active{transform:scale(.99)}
+  .ob-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;font-size:.82rem}
+  .ob-name .fl{margin-right:5px}
+  .ob-track{position:relative;height:15px;background:rgba(255,255,255,.04);border-radius:6px}
+  .ob-zero{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border-2)}
+  .ob-bar{position:absolute;top:2px;bottom:2px;border-radius:4px;transition:width .7s cubic-bezier(.22,1,.36,1)}
+  .ob-bar.pos{left:50%;background:linear-gradient(90deg,rgba(52,224,161,.45),var(--accent))}
+  .ob-bar.neg{right:50%;background:linear-gradient(270deg,rgba(245,158,11,.45),var(--away))}
+  .ob-val{text-align:right;font-weight:700;font-size:.8rem;font-variant-numeric:tabular-nums}
+  .ob-val.pos{color:var(--accent)}
+  .ob-val.neg{color:var(--away)}
+  .ob-divider{display:flex;align-items:center;gap:8px;color:var(--faint);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 2px}
+  .ob-divider::before,.ob-divider::after{content:"";flex:1;height:1px;background:var(--border)}
 
 </style>
 </head>
@@ -292,8 +312,8 @@
   <section id="scatter">
     <div class="sec-head">
       <div>
-        <h2><span class="em">📈</span> Players vs World Ranking</h2>
-        <div class="sub">2006 players (x) against the latest FIFA ranking (y, 11 Jun 2026).</div>
+        <h2><span class="em">📈</span> Ranking vs Player Base</h2>
+        <div class="sub">Each nation's FIFA rank vs how it ranks by player numbers. The dashed line is "as expected".</div>
       </div>
     </div>
     <div class="card">
@@ -302,19 +322,32 @@
           <span class="glider" style="width:calc(33.33% - 4px); transform:translateX(200%); transition:transform .28s cubic-bezier(.34,1.4,.5,1);"></span>
           <button data-top="50" style="font-size:.8rem; padding:8px 4px;">Top 50</button>
           <button data-top="100" style="font-size:.8rem; padding:8px 4px;">Top 100</button>
-          <button class="active" data-top="all" style="font-size:.8rem; padding:8px 4px;">All 211</button>
+          <button class="active" data-top="all" style="font-size:.8rem; padding:8px 4px;">All</button>
         </div>
       </div>
       <div class="scatter-readout" id="scatterReadout">Tap a dot to inspect a nation</div>
       <div class="scatter-wrap">
-        <svg id="scatterSvg" viewBox="0 0 380 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Scatter plot of FIFA Big Count players versus latest FIFA world ranking"></svg>
+        <svg id="scatterSvg" viewBox="0 0 380 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Scatter plot of FIFA ranking versus player-base ranking"></svg>
       </div>
       <div class="scatter-legend">
-        <span><i class="d-wc"></i>WC 2026 team</span>
-        <span><i class="d-other"></i>Other nation</span>
-        <span><i class="d-trend"></i>Trend</span>
+        <span><i class="d-over"></i>Overperforms</span>
+        <span><i class="d-under"></i>Underperforms</span>
+        <span><i class="d-wc"></i>WC 2026</span>
+        <span><i class="d-diag"></i>As expected</span>
       </div>
-      <div class="metric-note" style="margin-top:10px">Dots <strong>above</strong> the trend line punch above their weight — better ranked than their player base predicts. Players axis follows the Total / Registered toggle.</div>
+      <div class="metric-note" style="margin-top:10px">Both axes are ranks (1 = top‑left). Above the line = better world ranking than player numbers alone would suggest. Follows the Total / Registered toggle.</div>
+    </div>
+  </section>
+
+  <section id="overperf">
+    <div class="sec-head">
+      <div>
+        <h2><span class="em">⚖️</span> Punching Above Their Weight</h2>
+        <div class="sub">Gap between a nation's player-base rank and its FIFA rank, in places.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ob-list" id="overBar"></div>
     </div>
   </section>
 
@@ -553,77 +586,69 @@ function rankTicks(end){
   return [1,50,100,150,200];
 }
 
+function rankedTeams(){
+  // all FIFA-ranked teams for the current metric, with dense FIFA rank (fr)
+  // and player-base rank (pr), both 1..N over this same set
+  const arr = DATA
+    .filter(d => FIFA_RANK[d.team] != null && val(d) > 0)
+    .map(d => ({team:d.team, fifa:FIFA_RANK[d.team], v:val(d), wc:WC_2026_TEAMS.has(d.team), flag:flag(d)}));
+  [...arr].sort((a,b)=>a.fifa-b.fifa).forEach((p,i)=>p.fr=i+1);
+  [...arr].sort((a,b)=>b.v-a.v).forEach((p,i)=>p.pr=i+1);
+  return arr;
+}
+
 function renderScatter(){
   const svg = document.getElementById('scatterSvg');
   if(!svg) return;
   const m = {t:18, r:16, b:40, l:50};
   const pw = SC_VB.w - m.l - m.r, ph = SC_VB.h - m.t - m.b;
 
-  // every ranked team for the current metric (used to fit the trend)
-  const all = DATA
-    .filter(d => FIFA_RANK[d.team] != null && val(d) > 0)
-    .map(d => ({team:d.team, rank:FIFA_RANK[d.team], v:val(d), wc:WC_2026_TEAMS.has(d.team), flag:flag(d)}));
+  // visible teams: best N by FIFA rank, then re-ranked within the subset so
+  // both axes share a clean 1..k scale and the diagonal stays at 45°
+  let teams = rankedTeams();
+  const lim = scatterTop==='50' ? 50 : scatterTop==='100' ? 100 : teams.length;
+  teams = teams.filter(p => p.fr <= lim);
+  const k = teams.length;
+  [...teams].sort((a,b)=>a.fr-b.fr).forEach((p,i)=>p.sf=i+1);   // FIFA rank in view
+  [...teams].sort((a,b)=>b.v-a.v).forEach((p,i)=>p.sp=i+1);     // player rank in view
 
-  // least-squares fit: rank ≈ a + b·log10(players), over ALL ranked teams
-  const lx = all.map(p=>Math.log10(p.v)), ry = all.map(p=>p.rank);
-  const mx = lx.reduce((s,x)=>s+x,0)/lx.length, my = ry.reduce((s,y)=>s+y,0)/ry.length;
-  let num=0, den=0;
-  for(let i=0;i<lx.length;i++){ num+=(lx[i]-mx)*(ry[i]-my); den+=(lx[i]-mx)**2; }
-  const b=num/den, a=my-b*mx;
-  const predRank = v => a + b*Math.log10(v);
-
-  // visible set, limited by the top-N ranking filter
-  const yEnd = scatterTop==='50' ? 50 : scatterTop==='100' ? 100 : SCATTER_RANK_MAX;
-  const data = all.filter(p => p.rank <= yEnd);
-
-  // x = players (log), domain from the visible points; y = rank, reversed (1 at top)
-  const lo = Math.floor(Math.log10(Math.min(...data.map(p=>p.v))));
-  const hi = Math.ceil (Math.log10(Math.max(...data.map(p=>p.v))));
-  const X = v => m.l + (Math.log10(v)-lo)/(hi-lo)*pw;
-  const Y = r => m.t + (r-1)/(yEnd-1)*ph;
+  const X = r => m.l + (r-1)/(k-1)*pw;   // player-base rank (1 = most players, left)
+  const Y = r => m.t + (r-1)/(k-1)*ph;   // FIFA rank (1 = best, top)
 
   let g='';
-  for(let e=lo; e<=hi; e++){
-    const xx=X(Math.pow(10,e));
+  const ticks = rankTicks(k).filter(t=>t<=k);
+  ticks.forEach(t=>{
+    const xx=X(t);
     g+=`<line class="sc-grid" x1="${xx.toFixed(1)}" y1="${m.t}" x2="${xx.toFixed(1)}" y2="${m.t+ph}"/>`;
-    g+=`<text class="sc-tick x" x="${xx.toFixed(1)}" y="${m.t+ph+14}">${compact(Math.pow(10,e))}</text>`;
-  }
-  rankTicks(yEnd).filter(t=>t<=yEnd).forEach(t=>{
+    g+=`<text class="sc-tick x" x="${xx.toFixed(1)}" y="${m.t+ph+14}">${t}</text>`;
+  });
+  ticks.forEach(t=>{
     const yy=Y(t);
     g+=`<line class="sc-grid" x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+pw}" y2="${yy.toFixed(1)}"/>`;
     g+=`<text class="sc-tick y" x="${m.l-6}" y="${(yy+3).toFixed(1)}">${t}</text>`;
   });
-  g+=`<text class="sc-axtitle" x="${m.l+pw/2}" y="${SC_VB.h-4}">Players (log scale)</text>`;
-  g+=`<text class="sc-axtitle" transform="translate(12 ${m.t+ph/2}) rotate(-90)">FIFA ranking · 1 = best</text>`;
+  g+=`<text class="sc-axtitle" x="${m.l+pw/2}" y="${SC_VB.h-4}">Player-base rank · 1 = most players</text>`;
+  g+=`<text class="sc-axtitle" transform="translate(12 ${m.t+ph/2}) rotate(-90)">FIFA rank · 1 = best</text>`;
 
-  // trend line, sampled across the x-domain and clipped to the visible rank window
-  let trend='';
-  const seg=[];
-  for(let i=0;i<=60;i++){
-    const v=Math.pow(10, lo+(hi-lo)*i/60);
-    const r=predRank(v);
-    if(r>=1 && r<=yEnd) seg.push(`${X(v).toFixed(1)},${Y(r).toFixed(1)}`);
-  }
-  if(seg.length>1) trend=`<polyline class="sc-trend" points="${seg.join(' ')}"/>`;
+  // identity diagonal: where FIFA rank == player-base rank ("as expected")
+  const diag=`<line class="sc-diag" x1="${X(1).toFixed(1)}" y1="${Y(1).toFixed(1)}" x2="${X(k).toFixed(1)}" y2="${Y(k).toFixed(1)}"/>`;
 
-  // over = predicted rank − actual rank; positive ⇒ better than expected (overperform)
-  scatterPts = data.map(p=>({...p, cx:X(p.v), cy:Y(p.rank), over:predRank(p.v)-p.rank}));
-  const dots = scatterPts.map((p,i)=>
-    `<circle class="sc-dot ${p.wc?'wc':'other'}" data-team="${p.team.replace(/"/g,'&quot;')}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="0" style="transition-delay:${i*3}ms"/>`
-  ).join('');
+  // over = player-base rank − FIFA rank; positive ⇒ ranked better than its base
+  scatterPts = teams.map(p=>({...p, cx:X(p.sp), cy:Y(p.sf), over:p.sp-p.sf}));
+  const dots = scatterPts.map((p,i)=>{
+    const cls = p.over>1 ? 'over' : p.over<-1 ? 'under' : 'mid';
+    return `<circle class="sc-dot ${cls}${p.wc?' wc':''}" data-team="${p.team.replace(/"/g,'&quot;')}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="0" style="transition-delay:${i*3}ms"/>`;
+  }).join('');
 
-  svg.innerHTML =
-    `<defs><linearGradient id="scGrad" x1="0" y1="0" x2="1" y2="1">`+
-    `<stop offset="0" stop-color="var(--accent-2)"/><stop offset="1" stop-color="var(--accent)"/></linearGradient></defs>`+
-    g+
+  svg.innerHTML = g + diag +
     `<line class="sc-axis" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t+ph}"/>`+
     `<line class="sc-axis" x1="${m.l}" y1="${m.t+ph}" x2="${m.l+pw}" y2="${m.t+ph}"/>`+
-    trend + dots + `<g id="scLabel"></g>`;
+    dots + `<g id="scLabel"></g>`;
 
   requestAnimationFrame(()=>svg.querySelectorAll('.sc-dot').forEach(c=>c.setAttribute('r','3.4')));
 
   if(!scatterSel || !scatterPts.find(p=>p.team===scatterSel))
-    scatterSel = scatterPts.reduce((a,b)=>b.v>a.v?b:a, scatterPts[0]).team;
+    scatterSel = scatterPts.reduce((a,b)=>b.over>a.over?b:a, scatterPts[0]).team;
   drawScatterSel();
 }
 
@@ -644,13 +669,13 @@ function drawScatterSel(){
   } else lab.innerHTML='';
   const ro=document.getElementById('scatterReadout');
   if(p){
-    const d=Math.round(p.over);
+    const d=p.over;
     let verdict, cls;
-    if(d>1){ verdict=`▲ Overperforming · ${d} places above trend`; cls='up'; }
-    else if(d<-1){ verdict=`▼ Underperforming · ${-d} places below trend`; cls='down'; }
-    else { verdict='● Right on the trend line'; cls='mid'; }
+    if(d>1){ verdict=`▲ Overperforms · ranked ${d} place${d===1?'':'s'} better than its player base`; cls='up'; }
+    else if(d<-1){ verdict=`▼ Underperforms · ranked ${-d} place${d===-1?'':'s'} below its player base`; cls='down'; }
+    else { verdict='● Ranked about as expected'; cls='mid'; }
     ro.innerHTML=`<span class="sc-ro-flag">${p.flag}</span><span class="sc-ro-team">${p.team}</span>`+
-      `<span class="sc-ro-meta">FIFA #${p.rank} · ${fmt(p.v)} ${metric==='all'?'players':'registered'}</span>`+
+      `<span class="sc-ro-meta">FIFA #${p.fifa} · ${fmt(p.v)} ${metric==='all'?'players':'registered'}</span>`+
       `<span class="sc-ro-verdict ${cls}">${verdict}</span>`;
   }
 }
@@ -665,6 +690,28 @@ function scatterPick(evt){
   if(best && bd < 18*18){ scatterSel=best.team; drawScatterSel(); }
 }
 
+
+/* ---------- overperformance bar chart ---------- */
+function renderOverBar(){
+  const el=document.getElementById('overBar'); if(!el) return;
+  const teams=rankedTeams();
+  teams.forEach(p=>p.over=p.pr-p.fr);
+  const sorted=[...teams].sort((a,b)=>b.over-a.over);
+  const N=10;
+  const top=sorted.slice(0,N), bottom=sorted.slice(-N);
+  const maxAbs=Math.max(...[...top,...bottom].map(r=>Math.abs(r.over)),1);
+  const row=r=>{
+    const pos=r.over>=0, w=(Math.abs(r.over)/maxAbs*50).toFixed(1);
+    return `<div class="ob-row" data-team="${r.team.replace(/"/g,'&quot;')}">`+
+      `<div class="ob-name"><span class="fl">${r.flag}</span>${r.team}</div>`+
+      `<div class="ob-track"><div class="ob-zero"></div><div class="ob-bar ${pos?'pos':'neg'}" data-w="${w}" style="width:0"></div></div>`+
+      `<div class="ob-val ${pos?'pos':'neg'}">${pos?'+':''}${r.over}</div></div>`;
+  };
+  el.innerHTML = `<div class="ob-divider">Overachievers</div>` + top.map(row).join('')
+    + `<div class="ob-divider">Underachievers</div>` + bottom.map(row).join('');
+  requestAnimationFrame(()=>el.querySelectorAll('.ob-bar').forEach(b=>b.style.width=b.dataset.w+'%'));
+}
+
 /* ---------- wire up ---------- */
 function setMetric(m){
   metric=m;
@@ -673,7 +720,7 @@ function setMetric(m){
   document.getElementById('metricNote').textContent = m==='all'
     ? 'Showing everyone who plays — registered & casual players.'
     : 'Showing only players registered with a club or association.';
-  renderRanking(); renderH2H(); renderScatter();
+  renderRanking(); renderH2H(); renderScatter(); renderOverBar();
 }
 
 renderGlobal();
@@ -740,6 +787,17 @@ document.getElementById('sortToggle').addEventListener('click', e => {
 const _scSvg=document.getElementById('scatterSvg');
 _scSvg.addEventListener('click', scatterPick);
 _scSvg.addEventListener('pointermove', e=>{ if(e.pointerType==='mouse') scatterPick(e); });
+
+// clicking a bar selects that nation in the scatter (switching to All so it's visible)
+document.getElementById('overBar').addEventListener('click', e=>{
+  const r=e.target.closest('.ob-row'); if(!r) return;
+  scatterSel=r.dataset.team;
+  scatterTop='all';
+  document.querySelectorAll('#scatterTopSeg button').forEach(b=>b.classList.toggle('active', b.dataset.top==='all'));
+  document.querySelector('#scatterTopSeg .glider').style.transform='translateX(200%)';
+  renderScatter();
+  document.getElementById('scatter').scrollIntoView({behavior:'smooth', block:'center'});
+});
 
 setMetric('reg');
 renderH2H();
