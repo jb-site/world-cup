@@ -328,12 +328,17 @@ function renderGlobal(){
 let expanded=false;
 function renderRanking(){
   const list = sorted();
-  const max = list.length ? val(list[0]) : 1;
   const n = expanded ? list.length : 15;
+  const visibleList = list.slice(0, n);
+  
+  // Calculate max based ONLY on the currently visible teams
+  const max = visibleList.length ? Math.max(...visibleList.map(val)) : 1;
+  
   const sub = metric==='all' ? 'Ranked by total players (registered + unregistered).'
                              : 'Ranked by officially registered players.';
   document.getElementById('rankSub').textContent = sub;
-  document.getElementById('rankList').innerHTML = list.slice(0,n).map((d,i)=>`
+  
+  document.getElementById('rankList').innerHTML = visibleList.map((d,i)=>`
     <div class="bar-row">
       <div class="bar-pos">${i+1}</div>
       <div class="bar-main">
