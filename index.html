@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
+<meta name="description" content="An interactive explorer of FIFA's Big Count 2006 — football participation, clubs and officials around the world.">
+<title>FIFA Big Count 2006 · Football Around the World</title>
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-2:#0f1521;
+    --surface:rgba(255,255,255,.04);
+    --surface-2:rgba(255,255,255,.07);
+    --border:rgba(255,255,255,.09);
+    --border-2:rgba(255,255,255,.14);
+    --text:#eaf0f7;
+    --muted:#8a97aa;
+    --faint:#5a6678;
+    --accent:#34e0a1;
+    --accent-2:#22d3ee;
+    --home:#6366f1;
+    --away:#f59e0b;
+    --radius:20px;
+    --radius-sm:14px;
+    --shadow:0 10px 40px -12px rgba(0,0,0,.6);
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--font);
+    background:
+      radial-gradient(1200px 600px at 85% -10%,rgba(52,224,161,.10),transparent 60%),
+      radial-gradient(1000px 500px at 0% 0%,rgba(34,211,238,.08),transparent 55%),
+      var(--bg);
+    color:var(--text);
+    line-height:1.45;
+    min-height:100vh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overflow-x:hidden;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 64px}
+
+  /* ---------- Hero ---------- */
+  .hero{padding:30px 4px 8px;text-align:center}
+  .badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent);background:rgba(52,224,161,.10);
+    border:1px solid rgba(52,224,161,.25);
+    padding:6px 13px;border-radius:999px;margin-bottom:16px;
+  }
+  .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  h1{
+    font-size:clamp(2rem,8vw,3.1rem);line-height:1.02;font-weight:800;letter-spacing:-.02em;
+    background:linear-gradient(180deg,#fff,#aebfd4);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{color:var(--muted);font-size:clamp(.95rem,3.6vw,1.1rem);margin-top:12px;max-width:30ch;margin-inline:auto}
+
+  /* ---------- Stat chips ---------- */
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:26px}
+  .stat{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:16px 14px;text-align:left;position:relative;overflow:hidden;
+  }
+  .stat .v{font-size:clamp(1.4rem,6vw,1.9rem);font-weight:800;letter-spacing:-.02em}
+  .stat .l{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-weight:600}
+  .stat .ic{font-size:1.1rem;position:absolute;top:13px;right:13px;opacity:.55}
+
+  /* ---------- Sticky metric toggle ---------- */
+  .toggle-bar{
+    position:sticky;top:0;z-index:30;margin:30px -16px 0;padding:12px 16px;
+    background:linear-gradient(180deg,rgba(10,14,20,.92),rgba(10,14,20,.72));
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+  }
+  .seg{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px;position:relative}
+  .seg button{
+    flex:1;border:0;background:transparent;color:var(--muted);font-family:inherit;
+    font-size:.9rem;font-weight:700;padding:11px 8px;border-radius:999px;cursor:pointer;
+    position:relative;z-index:2;transition:color .25s;display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  .seg button.active{color:#06231a}
+  .seg .glider{
+    position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    border-radius:999px;z-index:1;transition:transform .32s cubic-bezier(.34,1.4,.5,1);
+    box-shadow:0 4px 16px -4px rgba(52,224,161,.6);
+  }
+  .seg.away .glider{transform:translateX(100%)}
+  .metric-note{text-align:center;color:var(--faint);font-size:.78rem;margin-top:9px}
+
+  /* ---------- Sections ---------- */
+  section{margin-top:38px}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px;padding:0 2px}
+  .sec-head h2{font-size:1.3rem;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .sec-head h2 .em{font-size:1.15rem}
+  .sec-head .sub{color:var(--muted);font-size:.82rem;margin-top:3px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+
+  /* ---------- Ranking bars ---------- */
+  .rank-list{display:flex;flex-direction:column;gap:11px}
+  .bar-row{display:flex;align-items:center;gap:11px}
+  .bar-pos{font-size:.8rem;font-weight:700;color:var(--faint);width:20px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+  .bar-main{flex:1;min-width:0}
+  .bar-label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+  .bar-team{display:flex;align-items:center;gap:8px;min-width:0}
+  .bar-team .fl{font-size:1.1rem;flex:none;line-height:1}
+  .bar-team .nm{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-val{font-size:.85rem;font-weight:700;color:var(--text);flex:none;font-variant-numeric:tabular-nums}
+  .bar-track{height:9px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:999px;width:0;
+    background:linear-gradient(90deg,var(--accent-2),var(--accent));
+    transition:width .9s cubic-bezier(.22,1,.36,1)}
+  .show-more{margin:16px auto 2px;display:block;background:var(--surface-2);border:1px solid var(--border-2);
+    color:var(--text);font-family:inherit;font-weight:700;font-size:.85rem;padding:11px 22px;border-radius:999px;cursor:pointer}
+  .show-more:active{transform:scale(.97)}
+
+  /* ---------- Head to head ---------- */
+  .presets{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:-2px -2px 14px;scrollbar-width:none}
+  .presets::-webkit-scrollbar{display:none}
+  .presets button{flex:none;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    font-family:inherit;font-size:.8rem;font-weight:600;padding:8px 13px;border-radius:999px;cursor:pointer;white-space:nowrap}
+  .presets button:active{transform:scale(.96)}
+
+  .fixture{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;margin-bottom:20px}
+  .team-pick{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+  .team-flag{font-size:2.6rem;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
+  .sel-wrap{position:relative;width:100%}
+  select{
+    -webkit-appearance:none;appearance:none;width:100%;font-family:inherit;
+    background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);
+    font-size:.85rem;font-weight:700;text-align:center;padding:10px 26px 10px 12px;border-radius:12px;cursor:pointer;
+    text-overflow:ellipsis;
+  }
+  .sel-wrap::after{content:"▾";position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:.8rem}
+  select.home{border-color:rgba(99,102,241,.5)}
+  select.away{border-color:rgba(245,158,11,.5)}
+  .team-score{font-size:clamp(1.6rem,9vw,2.4rem);font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .home .team-score,.team-pick.is-home .team-score{color:var(--home)}
+  .vs{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding-top:34px}
+  .vs .v{font-size:.8rem;font-weight:800;color:var(--faint);letter-spacing:.1em}
+  .win-pill{font-size:.62rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px;
+    background:rgba(52,224,161,.14);color:var(--accent);border:1px solid rgba(52,224,161,.3);opacity:0;transition:opacity .3s;white-space:nowrap}
+  .win-pill.show{opacity:1}
+  .score-cap{font-size:.7rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-top:2px}
+
+  /* comparison metric rows */
+  .cmp{display:flex;flex-direction:column;gap:15px;border-top:1px solid var(--border);padding-top:18px}
+  .cmp-row .cmp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-variant-numeric:tabular-nums}
+  .cmp-row .cmp-l{font-size:.92rem;font-weight:700;color:var(--home)}
+  .cmp-row .cmp-r{font-size:.92rem;font-weight:700;color:var(--away)}
+  .cmp-row .cmp-name{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .cmp-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.05);gap:2px}
+  .cmp-bar .l{background:linear-gradient(90deg,#818cf8,var(--home));border-radius:999px 0 0 999px;width:50%;transition:width .8s cubic-bezier(.22,1,.36,1)}
+  .cmp-bar .r{background:linear-gradient(90deg,var(--away),#fbbf24);border-radius:0 999px 999px 0;width:50%;transition:width .8s cubic-bezier(.22,1,.36,1)}
+
+  footer{margin-top:48px;text-align:center;color:var(--faint);font-size:.76rem;line-height:1.7}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--faint)}
+  .legend{display:inline-flex;gap:14px;margin-bottom:10px;font-size:.74rem;color:var(--muted);font-weight:600}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block}
+
+  @media(min-width:560px){
+    .stats{grid-template-columns:repeat(4,1fr)}
+    .team-flag{font-size:3.2rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="badge"><span class="dot"></span>FIFA Big Count · 2006</div>
+    <h1>Football Around the World</h1>
+    <p>265 million players. One game. Explore how the world plays football.</p>
+
+    <div class="stats" id="globalStats"></div>
+  </header>
+
+  <div class="toggle-bar">
+    <div class="seg" id="metricSeg">
+      <span class="glider"></span>
+      <button class="active" data-metric="all">⚽ Total players</button>
+      <button data-metric="reg">📋 Registered</button>
+    </div>
+    <div class="metric-note" id="metricNote"></div>
+  </div>
+
+  <section id="ranking">
+    <div class="sec-head">
+      <div>
+        <h2><span class="em">🏆</span> Top Footballing Nations</h2>
+        <div class="sub" id="rankSub"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="rank-list" id="rankList"></div>
+      <button class="show-more" id="showMore">Show all 208 ▾</button>
+    </div>
+  </section>
+
+  <section id="h2h">
+    <div class="sec-head">
+      <div>
+        <h2><span class="em">⚔️</span> Head to Head</h2>
+        <div class="sub">Line up any two nations — World Cup style.</div>
+      </div>
+    </div>
+
+    <div class="presets" id="presets"></div>
+
+    <div class="card">
+      <div class="fixture">
+        <div class="team-pick is-home">
+          <div class="team-flag" id="flagA">🏳️</div>
+          <div class="team-score" id="scoreA">0</div>
+          <div class="score-cap" id="capA">players</div>
+          <div class="win-pill" id="winA">Bigger base</div>
+          <div class="sel-wrap"><select class="home" id="selA"></select></div>
+        </div>
+        <div class="vs"><span class="v">VS</span></div>
+        <div class="team-pick">
+          <div class="team-flag" id="flagB">🏳️</div>
+          <div class="team-score" id="scoreB" style="color:var(--away)">0</div>
+          <div class="score-cap" id="capB">players</div>
+          <div class="win-pill" id="winB" style="background:rgba(245,158,11,.14);color:var(--away);border-color:rgba(245,158,11,.3)">Bigger base</div>
+          <div class="sel-wrap"><select class="away" id="selB"></select></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--home)"></i><span id="legA">Team A</span></span>
+        <span><i style="background:var(--away)"></i><span id="legB">Team B</span></span>
+      </div>
+      <div class="cmp" id="cmp"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Source: <strong>FIFA Big Count 2006</strong> — the global football census.<br>
+    Figures are the famous one-off survey of registered &amp; unregistered players, clubs and officials.</p>
+    <p style="margin-top:8px">Built as a standalone explorer · works fully offline · share the file anywhere.</p>
+  </footer>
+
+</div>
+
+<script>
+const DATA = [{"country": "Afghanistan", "team": "Afghanistan", "a2": "AF", "a3": "AFG", "all": 526781, "reg": 19781, "unreg": 507000, "clubs": 225, "officials": 145}, {"country": "Albania", "team": "Albania", "a2": "AL", "a3": "ALB", "all": 164730, "reg": 53730, "unreg": 111000, "clubs": 456, "officials": 6200}, {"country": "Algeria", "team": "Algeria", "a2": "DZ", "a3": "DZA", "all": 1790200, "reg": 203900, "unreg": 1586300, "clubs": 2090, "officials": 24500}, {"country": "American Samoa", "team": "American Samoa", "a2": "AS", "a3": "ASM", "all": 3248, "reg": 2038, "unreg": 1210, "clubs": 33, "officials": 237}, {"country": "Andorra", "team": "Andorra", "a2": "AD", "a3": "AND", "all": 5037, "reg": 3037, "unreg": 2000, "clubs": 27, "officials": 168}, {"country": "Angola", "team": "Angola", "a2": "AO", "a3": "AGO", "all": 664690, "reg": 16440, "unreg": 648250, "clubs": 103, "officials": 2059}, {"country": "Anguilla", "team": "Anguilla", "a2": "AI", "a3": "AIA", "all": 1597, "reg": 902, "unreg": 695, "clubs": 15, "officials": 70}, {"country": "Antigua and Barbuda", "team": "Antigua and Barbuda", "a2": "AG", "a3": "ATG", "all": 6600, "reg": 2200, "unreg": 4400, "clubs": 21, "officials": 133}, {"country": "Argentina", "team": "Argentina", "a2": "AR", "a3": "ARG", "all": 2658811, "reg": 331811, "unreg": 2327000, "clubs": 3377, "officials": 37161}, {"country": "Armenia", "team": "Armenia", "a2": "AM", "a3": "ARM", "all": 151353, "reg": 41453, "unreg": 109900, "clubs": 83, "officials": 4944}, {"country": "Aruba", "team": "Aruba", "a2": "AW", "a3": "ABW", "all": 10700, "reg": 5900, "unreg": 4800, "clubs": 62, "officials": 126}, {"country": "Australia", "team": "Australia", "a2": "AU", "a3": "AUS", "all": 970728, "reg": 435728, "unreg": 535000, "clubs": 3868, "officials": 67632}, {"country": "Austria", "team": "Austria", "a2": "AT", "a3": "AUT", "all": 967281, "reg": 596281, "unreg": 371000, "clubs": 2311, "officials": 392802}, {"country": "Azerbaijan", "team": "Azerbaijan", "a2": "AZ", "a3": "AZE", "all": 306370, "reg": 19670, "unreg": 286700, "clubs": 83, "officials": 13000}, {"country": "Bahamas", "team": "Bahamas", "a2": "BS", "a3": "BHS", "all": 17944, "reg": 2544, "unreg": 15400, "clubs": 41, "officials": 266}, {"country": "Bahrain", "team": "Bahrain", "a2": "BH", "a3": "BHR", "all": 18278, "reg": 4078, "unreg": 14200, "clubs": 52, "officials": 710}, {"country": "Bangladesh", "team": "Bangladesh", "a2": "BD", "a3": "BGD", "all": 6280300, "reg": 271300, "unreg": 6009000, "clubs": 4100, "officials": 75604}, {"country": "Barbados", "team": "Barbados", "a2": "BB", "a3": "BRB", "all": 37550, "reg": 15840, "unreg": 21710, "clubs": 134, "officials": 1326}, {"country": "Belarus", "team": "Belarus", "a2": "BY", "a3": "BLR", "all": 373810, "reg": 25810, "unreg": 348000, "clubs": 160, "officials": 1475}, {"country": "Belgium", "team": "Belgium", "a2": "BE", "a3": "BEL", "all": 816583, "reg": 443383, "unreg": 373200, "clubs": 2058, "officials": 79645}, {"country": "Belize", "team": "Belize", "a2": "BZ", "a3": "BLZ", "all": 17800, "reg": 3150, "unreg": 14650, "clubs": 42, "officials": 670}, {"country": "Benin", "team": "Benin", "a2": "BJ", "a3": "BEN", "all": 320600, "reg": 7800, "unreg": 312800, "clubs": 110, "officials": 1700}, {"country": "Bermuda", "team": "Bermuda", "a2": "BM", "a3": "BMU", "all": 7155, "reg": 3855, "unreg": 3300, "clubs": 58, "officials": 255}, {"country": "Bhutan", "team": "Bhutan", "a2": "BT", "a3": "BTN", "all": 17100, "reg": 1200, "unreg": 15900, "clubs": 10, "officials": 200}, {"country": "Bolivia (Plurinational State of)", "team": "Bolivia", "a2": "BO", "a3": "BOL", "all": 578800, "reg": 57200, "unreg": 521600, "clubs": 897, "officials": 3300}, {"country": "Bonaire, Sint Eustatius and Saba", "team": "Netherlands Antilles", "a2": "BQ", "a3": "BES", "all": 4220, "reg": 1820, "unreg": 2400, "clubs": 41, "officials": 362}, {"country": "Bosnia and Herzegovina", "team": "Bosnia and Herzegovina", "a2": "BA", "a3": "BIH", "all": 200240, "reg": 69040, "unreg": 131200, "clubs": 773, "officials": 11820}, {"country": "Botswana", "team": "Botswana", "a2": "BW", "a3": "BWA", "all": 98632, "reg": 14452, "unreg": 84180, "clubs": 63, "officials": 2578}, {"country": "Brazil", "team": "Brazil", "a2": "BR", "a3": "BRA", "all": 13197733, "reg": 2141733, "unreg": 11056000, "clubs": 29208, "officials": 61000}, {"country": "Brunei Darussalam", "team": "Brunei Darussalam", "a2": "BN", "a3": "BRN", "all": 7500, "reg": 1400, "unreg": 6100, "clubs": 20, "officials": 133}, {"country": "Bulgaria", "team": "Bulgaria", "a2": "BG", "a3": "BGR", "all": 327033, "reg": 50633, "unreg": 276400, "clubs": 579, "officials": 2571}, {"country": "Burkina Faso", "team": "Burkina Faso", "a2": "BF", "a3": "BFA", "all": 605100, "reg": 23200, "unreg": 581900, "clubs": 100, "officials": 3100}, {"country": "Burundi", "team": "Burundi", "a2": "BI", "a3": "BDI", "all": 352334, "reg": 11934, "unreg": 340400, "clubs": 165, "officials": 9632}, {"country": "Cabo Verde", "team": "Cape Verde Islands", "a2": "CV", "a3": "CPV", "all": 35100, "reg": 11500, "unreg": 23600, "clubs": 82, "officials": 756}, {"country": "Cambodia", "team": "Cambodia", "a2": "KH", "a3": "KHM", "all": 229511, "reg": 5511, "unreg": 224000, "clubs": 65, "officials": 230}, {"country": "Cameroon", "team": "Cameroon", "a2": "CM", "a3": "CMR", "all": 785515, "reg": 22045, "unreg": 763470, "clubs": 223, "officials": 7776}, {"country": "Canada", "team": "Canada", "a2": "CA", "a3": "CAN", "all": 2695712, "reg": 865712, "unreg": 1830000, "clubs": 10000, "officials": 189624}, {"country": "Cayman Islands", "team": "Cayman Islands", "a2": "KY", "a3": "CYM", "all": 3700, "reg": 1300, "unreg": 2400, "clubs": 10, "officials": 300}, {"country": "Central African Republic", "team": "Central African Republic", "a2": "CF", "a3": "CAF", "all": 192404, "reg": 8404, "unreg": 184000, "clubs": 140, "officials": 3610}, {"country": "Chad", "team": "Chad", "a2": "TD", "a3": "TCD", "all": 429750, "reg": 5750, "unreg": 424000, "clubs": 50, "officials": 2282}, {"country": "Chile", "team": "Chile", "a2": "CL", "a3": "CHL", "all": 2608337, "reg": 478337, "unreg": 2130000, "clubs": 5762, "officials": 26374}, {"country": "China", "team": "China PR", "a2": "CN", "a3": "CHN", "all": 26166335, "reg": 711235, "unreg": 25455100, "clubs": 2221, "officials": 129057}, {"country": "Colombia", "team": "Colombia", "a2": "CO", "a3": "COL", "all": 3043229, "reg": 291229, "unreg": 2752000, "clubs": 2773, "officials": 15800}, {"country": "Comoros", "team": "Comoros", "a2": "KM", "a3": "COM", "all": 27100, "reg": 1100, "unreg": 26000, "clubs": 10, "officials": 100}, {"country": "Congo", "team": "Congo", "a2": "CG", "a3": "COG", "all": 200210, "reg": 9060, "unreg": 191150, "clubs": 90, "officials": 1099}, {"country": "Congo (Democratic Republic of the)", "team": "Congo DR", "a2": "CD", "a3": "COD", "all": 2515600, "reg": 77600, "unreg": 2438000, "clubs": 770, "officials": 10600}, {"country": "Cook Islands", "team": "Cook Islands", "a2": "CK", "a3": "COK", "all": 2200, "reg": 1800, "unreg": 200, "clubs": 42, "officials": 200}, {"country": "Costa Rica", "team": "Costa Rica", "a2": "CR", "a3": "CRI", "all": 1084588, "reg": 50588, "unreg": 1034000, "clubs": 254, "officials": 4866}, {"country": "Côte d'Ivoire", "team": "Côte d'Ivoire", "a2": "CI", "a3": "CIV", "all": 801700, "reg": 23200, "unreg": 778500, "clubs": 220, "officials": 4500}, {"country": "Croatia", "team": "Croatia", "a2": "HR", "a3": "HRV", "all": 362514, "reg": 109799, "unreg": 252715, "clubs": 1464, "officials": 17488}, {"country": "Cuba", "team": "Cuba", "a2": "CU", "a3": "CUB", "all": 1141825, "reg": 46425, "unreg": 1095400, "clubs": 353, "officials": 5255}, {"country": "Curaçao", "team": "Curacao", "a2": "CW", "a3": "CUW", "all": 4220, "reg": 1820, "unreg": 2400, "clubs": 41, "officials": 362}, {"country": "Cyprus", "team": "Cyprus", "a2": "CY", "a3": "CYP", "all": 52403, "reg": 19203, "unreg": 33200, "clubs": 108, "officials": 2200}, {"country": "Czechia", "team": "Czech Republic", "a2": "CZ", "a3": "CZE", "all": 1040357, "reg": 686257, "unreg": 354100, "clubs": 4108, "officials": 12881}, {"country": "Denmark", "team": "Denmark", "a2": "DK", "a3": "DNK", "all": 511333, "reg": 301333, "unreg": 210000, "clubs": 2383, "officials": 56992}, {"country": "Djibouti", "team": "Djibouti", "a2": "DJ", "a3": "DJI", "all": 36320, "reg": 2520, "unreg": 33800, "clubs": 8, "officials": 480}, {"country": "Dominica", "team": "Dominica", "a2": "DM", "a3": "DMA", "all": 4500, "reg": 1300, "unreg": 3200, "clubs": 21, "officials": 139}, {"country": "Dominican Republic", "team": "Dominican Republic", "a2": "DO", "a3": "DOM", "all": 501004, "reg": 50004, "unreg": 451000, "clubs": 350, "officials": 1610}, {"country": "Ecuador", "team": "Ecuador", "a2": "EC", "a3": "ECU", "all": 1029655, "reg": 30855, "unreg": 998800, "clubs": 201, "officials": 4455}, {"country": "Egypt", "team": "Egypt", "a2": "EG", "a3": "EGY", "all": 3138110, "reg": 52110, "unreg": 3086000, "clubs": 608, "officials": 18270}, {"country": "El Salvador", "team": "El Salvador", "a2": "SV", "a3": "SLV", "all": 459692, "reg": 47792, "unreg": 411900, "clubs": 70, "officials": 5853}, {"country": "Equatorial Guinea", "team": "Equatorial Guinea", "a2": "GQ", "a3": "GNQ", "all": 25590, "reg": 2290, "unreg": 23300, "clubs": 22, "officials": 115}, {"country": "Eritrea", "team": "Eritrea", "a2": "ER", "a3": "ERI", "all": 381218, "reg": 28218, "unreg": 353000, "clubs": 26, "officials": 1553}, {"country": "Estonia", "team": "Estonia", "a2": "EE", "a3": "EST", "all": 57024, "reg": 9324, "unreg": 47700, "clubs": 152, "officials": 662}, {"country": "Ethiopia", "team": "Ethiopia", "a2": "ET", "a3": "ETH", "all": 3474245, "reg": 56245, "unreg": 3418000, "clubs": 1004, "officials": 310600}, {"country": "Faroe Islands", "team": "Faroe Islands", "a2": "FO", "a3": "FRO", "all": 8094, "reg": 5694, "unreg": 2400, "clubs": 40, "officials": 1050}, {"country": "Fiji", "team": "Fiji", "a2": "FJ", "a3": "FJI", "all": 49688, "reg": 30088, "unreg": 19600, "clubs": 410, "officials": 3046}, {"country": "Finland", "team": "Finland", "a2": "FI", "a3": "FIN", "all": 362649, "reg": 148649, "unreg": 214000, "clubs": 1260, "officials": 16955}, {"country": "France", "team": "France", "a2": "FR", "a3": "FRA", "all": 4190040, "reg": 1794940, "unreg": 2395100, "clubs": 20062, "officials": 285723}, {"country": "French Polynesia", "team": "Tahiti", "a2": "PF", "a3": "PYF", "all": 16396, "reg": 9796, "unreg": 6600, "clubs": 171, "officials": 128}, {"country": "Gabon", "team": "Gabon", "a2": "GA", "a3": "GAB", "all": 69800, "reg": 8300, "unreg": 61500, "clubs": 60, "officials": 1000}, {"country": "Gambia", "team": "Gambia", "a2": "GM", "a3": "GMB", "all": 68030, "reg": 4530, "unreg": 63500, "clubs": 51, "officials": 700}, {"country": "Georgia", "team": "Georgia", "a2": "GE", "a3": "GEO", "all": 222186, "reg": 26786, "unreg": 195400, "clubs": 209, "officials": 1233}, {"country": "Germany", "team": "Germany", "a2": "DE", "a3": "DEU", "all": 16308946, "reg": 6308946, "unreg": 10000000, "clubs": 26837, "officials": 159172}, {"country": "Ghana", "team": "Ghana", "a2": "GH", "a3": "GHA", "all": 987500, "reg": 27500, "unreg": 960000, "clubs": 280, "officials": 5200}, {"country": "Greece", "team": "Greece", "a2": "GR", "a3": "GRC", "all": 760621, "reg": 359221, "unreg": 401400, "clubs": 5768, "officials": 13330}, {"country": "Grenada", "team": "Grenada", "a2": "GD", "a3": "GRD", "all": 6682, "reg": 1652, "unreg": 5030, "clubs": 20, "officials": 150}, {"country": "Guam", "team": "Guam", "a2": "GU", "a3": "GUM", "all": 5460, "reg": 2685, "unreg": 2775, "clubs": 20, "officials": 156}, {"country": "Guatemala", "team": "Guatemala", "a2": "GT", "a3": "GTM", "all": 2006649, "reg": 154649, "unreg": 1852000, "clubs": 139, "officials": 5403}, {"country": "Guinea", "team": "Guinea", "a2": "GN", "a3": "GIN", "all": 410100, "reg": 18100, "unreg": 392000, "clubs": 150, "officials": 2833}, {"country": "Guinea-Bissau", "team": "Guinea-Bissau", "a2": "GW", "a3": "GNB", "all": 71900, "reg": 2400, "unreg": 69500, "clubs": 40, "officials": 400}, {"country": "Guyana", "team": "Guyana", "a2": "GY", "a3": "GUY", "all": 50740, "reg": 8940, "unreg": 41800, "clubs": 98, "officials": 745}, {"country": "Haiti", "team": "Haiti", "a2": "HT", "a3": "HTI", "all": 451724, "reg": 24424, "unreg": 427300, "clubs": 340, "officials": 2324}, {"country": "Honduras", "team": "Honduras", "a2": "HN", "a3": "HND", "all": 420600, "reg": 61300, "unreg": 359300, "clubs": 227, "officials": 6800}, {"country": "Hong Kong", "team": "Hong Kong", "a2": "HK", "a3": "HKG", "all": 149956, "reg": 4176, "unreg": 145780, "clubs": 84, "officials": 1059}, {"country": "Hungary", "team": "Hungary", "a2": "HU", "a3": "HUN", "all": 527326, "reg": 127226, "unreg": 400100, "clubs": 2778, "officials": 10765}, {"country": "Iceland", "team": "Iceland", "a2": "IS", "a3": "ISL", "all": 32408, "reg": 21508, "unreg": 10900, "clubs": 145, "officials": 1794}, {"country": "India", "team": "India", "a2": "IN", "a3": "IND", "all": 20587900, "reg": 384900, "unreg": 20203000, "clubs": 6540, "officials": 38640}, {"country": "Indonesia", "team": "Indonesia", "a2": "ID", "a3": "IDN", "all": 7094260, "reg": 66960, "unreg": 7027300, "clubs": 83, "officials": 1069}, {"country": "Iran (Islamic Republic of)", "team": "Iran", "a2": "IR", "a3": "IRN", "all": 1806544, "reg": 449644, "unreg": 1356900, "clubs": 120, "officials": 25800}, {"country": "Iraq", "team": "Iraq", "a2": "IQ", "a3": "IRQ", "all": 540000, "reg": 16000, "unreg": 524000, "clubs": 110, "officials": 2900}, {"country": "Ireland", "team": "Republic of Ireland", "a2": "IE", "a3": "IRL", "all": 421644, "reg": 252844, "unreg": 168800, "clubs": 5828, "officials": 7330}, {"country": "Israel", "team": "Israel", "a2": "IL", "a3": "ISR", "all": 283866, "reg": 43866, "unreg": 240000, "clubs": 290, "officials": 12150}, {"country": "Italy", "team": "Italy", "a2": "IT", "a3": "ITA", "all": 4980296, "reg": 1513596, "unreg": 3466700, "clubs": 16697, "officials": 78481}, {"country": "Jamaica", "team": "Jamaica", "a2": "JM", "a3": "JAM", "all": 168494, "reg": 25594, "unreg": 142900, "clubs": 274, "officials": 5037}, {"country": "Japan", "team": "Japan", "a2": "JP", "a3": "JPN", "all": 4805150, "reg": 1045150, "unreg": 3760000, "clubs": 2000, "officials": 249603}, {"country": "Jordan", "team": "Jordan", "a2": "JO", "a3": "JOR", "all": 121191, "reg": 4941, "unreg": 116250, "clubs": 102, "officials": 6231}, {"country": "Kazakhstan", "team": "Kazakhstan", "a2": "KZ", "a3": "KAZ", "all": 510420, "reg": 27820, "unreg": 482600, "clubs": 45, "officials": 3160}, {"country": "Kenya", "team": "Kenya", "a2": "KE", "a3": "KEN", "all": 2041102, "reg": 75102, "unreg": 1966000, "clubs": 711, "officials": 52010}, {"country": "Korea (Democratic People's Republic of)", "team": "Korea DPR", "a2": "KP", "a3": "PRK", "all": 502912, "reg": 14912, "unreg": 488000, "clubs": 239, "officials": 1858}, {"country": "Korea (Republic of)", "team": "Korea Republic", "a2": "KR", "a3": "KOR", "all": 1094227, "reg": 31127, "unreg": 1063100, "clubs": 100, "officials": 4648}, {"country": "Kuwait", "team": "Kuwait", "a2": "KW", "a3": "KWT", "all": 45800, "reg": 2200, "unreg": 43600, "clubs": 40, "officials": 400}, {"country": "Kyrgyzstan", "team": "Kyrgyzstan", "a2": "KG", "a3": "KGZ", "all": 124477, "reg": 8977, "unreg": 115500, "clubs": 100, "officials": 1494}, {"country": "Lao People's Democratic Republic", "team": "Laos", "a2": "LA", "a3": "LAO", "all": 108600, "reg": 2600, "unreg": 106000, "clubs": 50, "officials": 420}, {"country": "Latvia", "team": "Latvia", "a2": "LV", "a3": "LVA", "all": 85285, "reg": 8385, "unreg": 76900, "clubs": 97, "officials": 655}, {"country": "Lebanon", "team": "Lebanon", "a2": "LB", "a3": "LBN", "all": 318485, "reg": 18485, "unreg": 300000, "clubs": 178, "officials": 3495}, {"country": "Lesotho", "team": "Lesotho", "a2": "LS", "a3": "LSO", "all": 110000, "reg": 29500, "unreg": 80500, "clubs": 110, "officials": 2300}, {"country": "Liberia", "team": "Liberia", "a2": "LR", "a3": "LBR", "all": 163267, "reg": 9267, "unreg": 154000, "clubs": 47, "officials": 656}, {"country": "Libya", "team": "Libya", "a2": "LY", "a3": "LBY", "all": 263800, "reg": 8800, "unreg": 255000, "clubs": 110, "officials": 2400}, {"country": "Liechtenstein", "team": "Liechtenstein", "a2": "LI", "a3": "LIE", "all": 3315, "reg": 2205, "unreg": 1110, "clubs": 10, "officials": 274}, {"country": "Lithuania", "team": "Lithuania", "a2": "LT", "a3": "LTU", "all": 135874, "reg": 15774, "unreg": 120100, "clubs": 65, "officials": 1565}, {"country": "Luxembourg", "team": "Luxembourg", "a2": "LU", "a3": "LUX", "all": 47580, "reg": 32480, "unreg": 15100, "clubs": 135, "officials": 1314}, {"country": "Macao", "team": "Macau", "a2": "MO", "a3": "MAC", "all": 14123, "reg": 4773, "unreg": 9350, "clubs": 96, "officials": 754}, {"country": "Macedonia (the former Yugoslav Republic of)", "team": "FYR Macedonia", "a2": "MK", "a3": "MKD", "all": 93896, "reg": 22896, "unreg": 71000, "clubs": 472, "officials": 1865}, {"country": "Madagascar", "team": "Madagascar", "a2": "MG", "a3": "MDG", "all": 826420, "reg": 30420, "unreg": 796000, "clubs": 220, "officials": 4788}, {"country": "Malawi", "team": "Malawi", "a2": "MW", "a3": "MWI", "all": 515800, "reg": 20100, "unreg": 495700, "clubs": 70, "officials": 2400}, {"country": "Malaysia", "team": "Malaysia", "a2": "MY", "a3": "MYS", "all": 585730, "reg": 9930, "unreg": 575800, "clubs": 110, "officials": 11810}, {"country": "Maldives", "team": "Maldives", "a2": "MV", "a3": "MDV", "all": 20286, "reg": 5486, "unreg": 14800, "clubs": 60, "officials": 178}, {"country": "Mali", "team": "Mali", "a2": "ML", "a3": "MLI", "all": 1391625, "reg": 14175, "unreg": 1377450, "clubs": 140, "officials": 6078}, {"country": "Malta", "team": "Malta", "a2": "MT", "a3": "MLT", "all": 24853, "reg": 10753, "unreg": 14100, "clubs": 61, "officials": 2204}, {"country": "Mauritania", "team": "Mauritania", "a2": "MR", "a3": "MRT", "all": 137920, "reg": 5620, "unreg": 132300, "clubs": 68, "officials": 877}, {"country": "Mauritius", "team": "Mauritius", "a2": "MU", "a3": "MUS", "all": 76800, "reg": 17100, "unreg": 59700, "clubs": 70, "officials": 4500}, {"country": "Mexico", "team": "Mexico", "a2": "MX", "a3": "MEX", "all": 8479595, "reg": 324595, "unreg": 8155000, "clubs": 311, "officials": 85789}, {"country": "Moldova (Republic of)", "team": "Moldova", "a2": "MD", "a3": "MDA", "all": 168570, "reg": 10420, "unreg": 158150, "clubs": 89, "officials": 711}, {"country": "Mongolia", "team": "Mongolia", "a2": "MN", "a3": "MNG", "all": 51220, "reg": 5220, "unreg": 46000, "clubs": 10, "officials": 103}, {"country": "Montserrat", "team": "Montserrat", "a2": "MS", "a3": "MSR", "all": 700, "reg": 200, "unreg": 500, "clubs": null, "officials": 6}, {"country": "Morocco", "team": "Morocco", "a2": "MA", "a3": "MAR", "all": 1628016, "reg": 165016, "unreg": 1463000, "clubs": 599, "officials": 8651}, {"country": "Mozambique", "team": "Mozambique", "a2": "MZ", "a3": "MOZ", "all": 885700, "reg": 35700, "unreg": 850000, "clubs": 170, "officials": 6100}, {"country": "Myanmar", "team": "Myanmar", "a2": "MM", "a3": "MMR", "all": 1122039, "reg": 132659, "unreg": 989380, "clubs": 605, "officials": 3750}, {"country": "Namibia", "team": "Namibia", "a2": "NA", "a3": "NAM", "all": 136960, "reg": 40460, "unreg": 96500, "clubs": 101, "officials": 1645}, {"country": "Nepal", "team": "Nepal", "a2": "NP", "a3": "NPL", "all": 477800, "reg": 13800, "unreg": 464000, "clubs": 110, "officials": 2300}, {"country": "Netherlands", "team": "Netherlands", "a2": "NL", "a3": "NLD", "all": 1745860, "reg": 1138860, "unreg": 607000, "clubs": 4856, "officials": 11238}, {"country": "New Caledonia", "team": "New Caledonia", "a2": "NC", "a3": "NCL", "all": 9800, "reg": 5200, "unreg": 4600, "clubs": 105, "officials": 300}, {"country": "New Zealand", "team": "New Zealand", "a2": "NZ", "a3": "NZL", "all": 198757, "reg": 102257, "unreg": 96500, "clubs": 342, "officials": 19800}, {"country": "Nicaragua", "team": "Nicaragua", "a2": "NI", "a3": "NIC", "all": 467031, "reg": 120677, "unreg": 346354, "clubs": 1281, "officials": 5770}, {"country": "Niger", "team": "Niger", "a2": "NE", "a3": "NER", "all": 542711, "reg": 7711, "unreg": 535000, "clubs": 120, "officials": 1338}, {"country": "Nigeria", "team": "Nigeria", "a2": "NG", "a3": "NGA", "all": 6653710, "reg": 58710, "unreg": 6595000, "clubs": 52, "officials": 33122}, {"country": "Norway", "team": "Norway", "a2": "NO", "a3": "NOR", "all": 543165, "reg": 352165, "unreg": 191000, "clubs": 3218, "officials": 7201}, {"country": "Oman", "team": "Oman", "a2": "OM", "a3": "OMN", "all": 57610, "reg": 8610, "unreg": 49000, "clubs": 43, "officials": 605}, {"country": "Pakistan", "team": "Pakistan", "a2": "PK", "a3": "PAK", "all": 2975400, "reg": 64400, "unreg": 2911000, "clubs": 720, "officials": 9900}, {"country": "Palestine, State of", "team": "Palestine", "a2": "PS", "a3": "PSE", "all": 92160, "reg": 19060, "unreg": 73100, "clubs": 40, "officials": 795}, {"country": "Panama", "team": "Panama", "a2": "PA", "a3": "PAN", "all": 203400, "reg": 52600, "unreg": 150800, "clubs": 588, "officials": 2000}, {"country": "Papua New Guinea", "team": "Papua New Guinea", "a2": "PG", "a3": "PNG", "all": 196900, "reg": 68800, "unreg": 128100, "clubs": 463, "officials": 6400}, {"country": "Paraguay", "team": "Paraguay", "a2": "PY", "a3": "PRY", "all": 1037435, "reg": 87435, "unreg": 950000, "clubs": 1709, "officials": 4002}, {"country": "Peru", "team": "Peru", "a2": "PE", "a3": "PER", "all": 1891790, "reg": 238790, "unreg": 1653000, "clubs": 2100, "officials": 4182}, {"country": "Philippines", "team": "Philippines", "a2": "PH", "a3": "PHL", "all": 1668765, "reg": 30675, "unreg": 1638090, "clubs": 85, "officials": 299}, {"country": "Poland", "team": "Poland", "a2": "PL", "a3": "POL", "all": 2000264, "reg": 656964, "unreg": 1343300, "clubs": 5891, "officials": 71758}, {"country": "Portugal", "team": "Portugal", "a2": "PT", "a3": "PRT", "all": 547734, "reg": 132734, "unreg": 415000, "clubs": 2748, "officials": 38471}, {"country": "Puerto Rico", "team": "Puerto Rico", "a2": "PR", "a3": "PRI", "all": 222670, "reg": 23770, "unreg": 198900, "clubs": 77, "officials": 9617}, {"country": "Qatar", "team": "Qatar", "a2": "QA", "a3": "QAT", "all": 18156, "reg": 6556, "unreg": 11600, "clubs": 16, "officials": 530}, {"country": "Romania", "team": "Romania", "a2": "RO", "a3": "ROU", "all": 1034320, "reg": 108620, "unreg": 925700, "clubs": 2832, "officials": 20883}, {"country": "Russian Federation", "team": "Russia", "a2": "RU", "a3": "RUS", "all": 5802536, "reg": 846736, "unreg": 4955800, "clubs": 14329, "officials": 259830}, {"country": "Rwanda", "team": "Rwanda", "a2": "RW", "a3": "RWA", "all": 386400, "reg": 10900, "unreg": 375500, "clubs": 110, "officials": 2000}, {"country": "Saint Kitts and Nevis", "team": "St. Kitts and Nevis", "a2": "KN", "a3": "KNA", "all": 3500, "reg": 1500, "unreg": 2000, "clubs": 31, "officials": 100}, {"country": "Saint Lucia", "team": "St. Lucia", "a2": "LC", "a3": "LCA", "all": 11023, "reg": 3063, "unreg": 7960, "clubs": 41, "officials": 390}, {"country": "Saint Vincent and the Grenadines", "team": "St. Vincent and the Grenadines", "a2": "VC", "a3": "VCT", "all": 9500, "reg": 4400, "unreg": 5100, "clubs": 52, "officials": 505}, {"country": "Samoa", "team": "Samoa", "a2": "WS", "a3": "WSM", "all": 5700, "reg": 2300, "unreg": 3400, "clubs": 63, "officials": 400}, {"country": "San Marino", "team": "San Marino", "a2": "SM", "a3": "SMR", "all": 2836, "reg": 1586, "unreg": 1250, "clubs": 17, "officials": 260}, {"country": "Sao Tome and Principe", "team": "Sao Tome e Principe", "a2": "ST", "a3": "STP", "all": 8400, "reg": 800, "unreg": 7600, "clubs": 10, "officials": 122}, {"country": "Saudi Arabia", "team": "Saudi Arabia", "a2": "SA", "a3": "SAU", "all": 438644, "reg": 15144, "unreg": 423500, "clubs": 153, "officials": 1292}, {"country": "Senegal", "team": "Senegal", "a2": "SN", "a3": "SEN", "all": 661685, "reg": 176685, "unreg": 485000, "clubs": 195, "officials": 5024}, {"country": "Serbia", "team": "Serbia", "a2": "RS", "a3": "SRB", "all": 441682, "reg": 132182, "unreg": 309500, "clubs": 2096, "officials": 14084}, {"country": "Seychelles", "team": "Seychelles", "a2": "SC", "a3": "SYC", "all": 5860, "reg": 2060, "unreg": 3800, "clubs": 20, "officials": 390}, {"country": "Sierra Leone", "team": "Sierra Leone", "a2": "SL", "a3": "SLE", "all": 259630, "reg": 6480, "unreg": 253150, "clubs": 24, "officials": 2463}, {"country": "Singapore", "team": "Singapore", "a2": "SG", "a3": "SGP", "all": 197003, "reg": 10003, "unreg": 187000, "clubs": 54, "officials": 1516}, {"country": "Slovakia", "team": "Slovakia", "a2": "SK", "a3": "SVK", "all": 622668, "reg": 428968, "unreg": 193700, "clubs": 2432, "officials": 18773}, {"country": "Slovenia", "team": "Slovenia", "a2": "SI", "a3": "SVN", "all": 116925, "reg": 30725, "unreg": 86200, "clubs": 340, "officials": 5818}, {"country": "Solomon Islands", "team": "Solomon Islands", "a2": "SB", "a3": "SLB", "all": 26820, "reg": 8820, "unreg": 18000, "clubs": 212, "officials": 560}, {"country": "Somalia", "team": "Somalia", "a2": "SO", "a3": "SOM", "all": 546268, "reg": 28868, "unreg": 517400, "clubs": 56, "officials": 7330}, {"country": "South Africa", "team": "South Africa", "a2": "ZA", "a3": "ZAF", "all": 4540410, "reg": 1469410, "unreg": 3071000, "clubs": 900, "officials": 20557}, {"country": "Spain", "team": "Spain", "a2": "ES", "a3": "ESP", "all": 2834190, "reg": 653190, "unreg": 2181000, "clubs": 18190, "officials": 62573}, {"country": "Sri Lanka", "team": "Sri Lanka", "a2": "LK", "a3": "LKA", "all": 429150, "reg": 51150, "unreg": 378000, "clubs": 583, "officials": 2220}, {"country": "Sudan", "team": "Sudan", "a2": "SD", "a3": "SDN", "all": 1567300, "reg": 46300, "unreg": 1521000, "clubs": 440, "officials": 8800}, {"country": "Suriname", "team": "Suriname", "a2": "SR", "a3": "SUR", "all": 35250, "reg": 9250, "unreg": 26000, "clubs": 31, "officials": 375}, {"country": "Swaziland", "team": "Swaziland", "a2": "SZ", "a3": "SWZ", "all": 54900, "reg": 5000, "unreg": 49900, "clubs": 60, "officials": 900}, {"country": "Sweden", "team": "Sweden", "a2": "SE", "a3": "SWE", "all": 1006939, "reg": 552939, "unreg": 454000, "clubs": 4236, "officials": 24950}, {"country": "Switzerland", "team": "Switzerland", "a2": "CH", "a3": "CHE", "all": 571700, "reg": 232700, "unreg": 339000, "clubs": 1806, "officials": 257783}, {"country": "Syrian Arab Republic", "team": "Syria", "a2": "SY", "a3": "SYR", "all": 430800, "reg": 34600, "unreg": 396200, "clubs": 170, "officials": 4300}, {"country": "Taiwan, Province of China", "team": "Chinese Taipei", "a2": "TW", "a3": "TWN", "all": 458460, "reg": 12560, "unreg": 445900, "clubs": 60, "officials": 476}, {"country": "Tajikistan", "team": "Tajikistan", "a2": "TJ", "a3": "TJK", "all": 132893, "reg": 3743, "unreg": 129150, "clubs": 50, "officials": 323}, {"country": "Tanzania, United Republic of", "team": "Tanzania", "a2": "TZ", "a3": "TZA", "all": 226518, "reg": 26318, "unreg": 200200, "clubs": 204, "officials": 8775}, {"country": "Thailand", "team": "Thailand", "a2": "TH", "a3": "THA", "all": 1298000, "reg": 28600, "unreg": 1269400, "clubs": 150, "officials": 6600}, {"country": "Timor-Leste", "team": "Timor-Leste", "a2": "TL", "a3": "TLS", "all": 15500, "reg": 500, "unreg": 15000, "clubs": 10, "officials": 100}, {"country": "Togo", "team": "Togo", "a2": "TG", "a3": "TGO", "all": 242400, "reg": 9800, "unreg": 232600, "clubs": 100, "officials": 3300}, {"country": "Tonga", "team": "Tonga", "a2": "TO", "a3": "TON", "all": 5000, "reg": 3200, "unreg": 1800, "clubs": 105, "officials": 200}, {"country": "Trinidad and Tobago", "team": "Trinidad and Tobago", "a2": "TT", "a3": "TTO", "all": 84600, "reg": 16600, "unreg": 68000, "clubs": 98, "officials": 900}, {"country": "Tunisia", "team": "Tunisia", "a2": "TN", "a3": "TUN", "all": 525264, "reg": 51829, "unreg": 473435, "clubs": 274, "officials": 7624}, {"country": "Turkey", "team": "Turkey", "a2": "TR", "a3": "TUR", "all": 2748657, "reg": 197657, "unreg": 2551000, "clubs": 4450, "officials": 208027}, {"country": "Turkmenistan", "team": "Turkmenistan", "a2": "TM", "a3": "TKM", "all": 100415, "reg": 1415, "unreg": 99000, "clubs": 15, "officials": 195}, {"country": "Turks and Caicos Islands", "team": "Turks and Caicos Islands", "a2": "TC", "a3": "TCA", "all": 2155, "reg": 655, "unreg": 1500, "clubs": 9, "officials": 47}, {"country": "Uganda", "team": "Uganda", "a2": "UG", "a3": "UGA", "all": 1191514, "reg": 46514, "unreg": 1145000, "clubs": 402, "officials": 5600}, {"country": "Ukraine", "team": "Ukraine", "a2": "UA", "a3": "UKR", "all": 2273017, "reg": 692317, "unreg": 1580700, "clubs": 70, "officials": 15580}, {"country": "United Arab Emirates", "team": "United Arab Emirates", "a2": "AE", "a3": "ARE", "all": 82776, "reg": 7776, "unreg": 75000, "clubs": 31, "officials": 986}, {"country": "United Kingdom of Great Britain and Northern Ireland", "team": "England", "a2": "GB", "a3": "GBR", "all": 4164110, "reg": 1485910, "unreg": 2678200, "clubs": 42490, "officials": 168186}, {"country": "United Kingdom of Great Britain and Northern Ireland", "team": "Northern Ireland", "a2": "GB", "a3": "GBR", "all": 92320, "reg": 38820, "unreg": 53500, "clubs": 829, "officials": 12110}, {"country": "United Kingdom of Great Britain and Northern Ireland", "team": "Scotland", "a2": "GB", "a3": "GBR", "all": 420589, "reg": 111089, "unreg": 309500, "clubs": 6727, "officials": 10597}, {"country": "United Kingdom of Great Britain and Northern Ireland", "team": "Wales", "a2": "GB", "a3": "GBR", "all": 173550, "reg": 67550, "unreg": 106000, "clubs": 1920, "officials": 11320}, {"country": "United States of America", "team": "USA", "a2": "US", "a3": "USA", "all": 24472778, "reg": 4186778, "unreg": 20286000, "clubs": 9000, "officials": 796300}, {"country": "Uruguay", "team": "Uruguay", "a2": "UY", "a3": "URY", "all": 241300, "reg": 41800, "unreg": 199500, "clubs": 1220, "officials": 2600}, {"country": "Uzbekistan", "team": "Uzbekistan", "a2": "UZ", "a3": "UZB", "all": 730200, "reg": 36900, "unreg": 693300, "clubs": 216, "officials": 1325}, {"country": "Vanuatu", "team": "Vanuatu", "a2": "VU", "a3": "VUT", "all": 27400, "reg": 6400, "unreg": 21000, "clubs": 230, "officials": 316}, {"country": "Venezuela (Bolivarian Republic of)", "team": "Venezuela", "a2": "VE", "a3": "VEN", "all": 1490573, "reg": 60173, "unreg": 1430400, "clubs": 920, "officials": 9132}, {"country": "Viet Nam", "team": "Vietnam", "a2": "VN", "a3": "VNM", "all": 1874350, "reg": 24150, "unreg": 1850200, "clubs": 35, "officials": 10652}, {"country": "Virgin Islands (British)", "team": "British Virgin Islands", "a2": "VG", "a3": "VGB", "all": 1555, "reg": 435, "unreg": 1120, "clubs": null, "officials": 21}, {"country": "Virgin Islands (U.S.)", "team": "US Virgin Islands", "a2": "VI", "a3": "VIR", "all": 6700, "reg": 900, "unreg": 5800, "clubs": 10, "officials": 101}, {"country": "Yemen", "team": "Yemen", "a2": "YE", "a3": "YEM", "all": 383300, "reg": 9200, "unreg": 374100, "clubs": 110, "officials": 502}, {"country": "Zambia", "team": "Zambia", "a2": "ZM", "a3": "ZMB", "all": 1024817, "reg": 29211, "unreg": 995606, "clubs": 918, "officials": 11559}, {"country": "Zimbabwe", "team": "Zimbabwe", "a2": "ZW", "a3": "ZWE", "all": 651400, "reg": 34600, "unreg": 616800, "clubs": 350, "officials": 3100}];
+
+/* ---------- helpers ---------- */
+const fmt = n => n==null ? "—" : n.toLocaleString('en-US');
+const compact = n => {
+  if(n==null) return "—";
+  if(n>=1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'')+'B';
+  if(n>=1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M';
+  if(n>=1e3) return (n/1e3).toFixed(n>=1e5?0:1).replace(/\.0$/,'')+'K';
+  return ''+n;
+};
+const HOME_NATION = {England:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',Scotland:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',Wales:'🏴󠁧󠁢󠁷󠁬󠁳󠁿'};
+function flag(d){
+  if(HOME_NATION[d.team]) return HOME_NATION[d.team];
+  const cc = (d.a2||'').toUpperCase();
+  if(cc.length!==2 || !/^[A-Z]{2}$/.test(cc)) return '🏳️';
+  return String.fromCodePoint(...[...cc].map(c=>0x1F1E6 + c.charCodeAt(0)-65));
+}
+
+let metric = 'all';                       // 'all' | 'reg'
+const val = d => metric==='all' ? d.all : d.reg;
+const sorted = () => [...DATA].filter(d=>val(d)!=null).sort((a,b)=>val(b)-val(a));
+
+/* ---------- global stats ---------- */
+function renderGlobal(){
+  const sum = k => DATA.reduce((s,d)=>s+(d[k]||0),0);
+  const chips=[
+    {v:compact(sum('all')),l:'Players',ic:'⚽'},
+    {v:DATA.length,l:'Associations',ic:'🌍'},
+    {v:compact(sum('clubs')),l:'Clubs',ic:'🏟️'},
+    {v:compact(sum('officials')),l:'Officials',ic:'🧑‍⚖️'},
+  ];
+  document.getElementById('globalStats').innerHTML = chips.map(c=>
+    `<div class="stat"><span class="ic">${c.ic}</span><div class="v">${c.v}</div><div class="l">${c.l}</div></div>`).join('');
+}
+
+/* ---------- ranking ---------- */
+let expanded=false;
+function renderRanking(){
+  const list = sorted();
+  const max = val(list[0]);
+  const n = expanded ? list.length : 15;
+  const sub = metric==='all' ? 'Ranked by total players (registered + unregistered).'
+                             : 'Ranked by officially registered players.';
+  document.getElementById('rankSub').textContent = sub;
+  document.getElementById('rankList').innerHTML = list.slice(0,n).map((d,i)=>`
+    <div class="bar-row">
+      <div class="bar-pos">${i+1}</div>
+      <div class="bar-main">
+        <div class="bar-label">
+          <span class="bar-team"><span class="fl">${flag(d)}</span><span class="nm">${d.team}</span></span>
+          <span class="bar-val">${fmt(val(d))}</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" data-w="${(val(d)/max*100).toFixed(2)}"></div></div>
+      </div>
+    </div>`).join('');
+  requestAnimationFrame(()=>document.querySelectorAll('#rankList .bar-fill').forEach(b=>b.style.width=b.dataset.w+'%'));
+  const btn=document.getElementById('showMore');
+  btn.textContent = expanded ? 'Show top 15 ▴' : `Show all ${list.length} ▾`;
+}
+
+/* ---------- head to head ---------- */
+const byTeam = {};
+DATA.forEach(d=>byTeam[d.team]=d);
+const teamNames = DATA.map(d=>d.team).sort((a,b)=>a.localeCompare(b));
+
+function fillSelect(sel,selected){
+  sel.innerHTML = teamNames.map(t=>`<option value="${t}"${t===selected?' selected':''}>${t}</option>`).join('');
+}
+
+function metricRow(name,a,b,fmtFn){
+  const av=a||0, bv=b||0, t=av+bv;
+  const lp = t? (av/t*100) : 50, rp = t? (bv/t*100) : 50;
+  return {name, aTxt:(fmtFn||fmt)(a), bTxt:(fmtFn||fmt)(b), lp, rp};
+}
+
+function renderH2H(){
+  const A=byTeam[document.getElementById('selA').value];
+  const B=byTeam[document.getElementById('selB').value];
+  if(!A||!B) return;
+  const cap = metric==='all' ? 'total players' : 'registered';
+  document.getElementById('flagA').textContent=flag(A);
+  document.getElementById('flagB').textContent=flag(B);
+  document.getElementById('scoreA').textContent=compact(val(A));
+  document.getElementById('scoreB').textContent=compact(val(B));
+  document.getElementById('capA').textContent=cap;
+  document.getElementById('capB').textContent=cap;
+  document.getElementById('legA').textContent=A.team;
+  document.getElementById('legB').textContent=B.team;
+
+  const aWin=val(A)>val(B), bWin=val(B)>val(A);
+  document.getElementById('winA').classList.toggle('show',aWin);
+  document.getElementById('winB').classList.toggle('show',bWin);
+
+  const pct = d => d.all? Math.round(d.reg/d.all*100)+'%' : '—';
+  const rows=[
+    metricRow(metric==='all'?'Total players':'Registered players', val(A), val(B)),
+    metricRow('Registered share',
+      A.all?Math.round(A.reg/A.all*100):0, B.all?Math.round(B.reg/B.all*100):0,
+      v=>v+'%'),
+    metricRow('Clubs', A.clubs, B.clubs),
+    metricRow('Officials', A.officials, B.officials),
+  ];
+  document.getElementById('cmp').innerHTML = rows.map(r=>`
+    <div class="cmp-row">
+      <div class="cmp-top"><span class="cmp-l">${r.aTxt}</span><span class="cmp-name">${r.name}</span><span class="cmp-r">${r.bTxt}</span></div>
+      <div class="cmp-bar"><div class="l" data-w="${r.lp.toFixed(1)}"></div><div class="r" data-w="${r.rp.toFixed(1)}"></div></div>
+    </div>`).join('');
+  requestAnimationFrame(()=>document.querySelectorAll('#cmp .cmp-bar > div').forEach(b=>b.style.width=b.dataset.w+'%'));
+}
+
+/* ---------- presets ---------- */
+const PRESETS=[
+  ['Brazil','Germany'],['Argentina','France'],['England','USA'],
+  ['Spain','Netherlands'],['Italy','Mexico'],['Japan','Korea Republic'],['Nigeria','Cameroon']
+];
+function renderPresets(){
+  document.getElementById('presets').innerHTML = PRESETS
+    .filter(([a,b])=>byTeam[a]&&byTeam[b])
+    .map(([a,b])=>`<button data-a="${a}" data-b="${b}">${a} v ${b}</button>`).join('');
+}
+
+/* ---------- wire up ---------- */
+function setMetric(m){
+  metric=m;
+  document.querySelectorAll('#metricSeg button').forEach(b=>b.classList.toggle('active',b.dataset.metric===m));
+  document.getElementById('metricSeg').classList.toggle('away',m==='reg');
+  document.getElementById('metricNote').textContent = m==='all'
+    ? 'Showing everyone who plays — registered & casual players.'
+    : 'Showing only players registered with a club or association.';
+  renderRanking(); renderH2H();
+}
+
+renderGlobal();
+renderPresets();
+fillSelect(document.getElementById('selA'),'Brazil');
+fillSelect(document.getElementById('selB'),'Germany');
+
+document.getElementById('metricSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(b) setMetric(b.dataset.metric);
+});
+document.getElementById('showMore').addEventListener('click',()=>{expanded=!expanded;renderRanking();});
+document.getElementById('selA').addEventListener('change',renderH2H);
+document.getElementById('selB').addEventListener('change',renderH2H);
+document.getElementById('presets').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.getElementById('selA').value=b.dataset.a;
+  document.getElementById('selB').value=b.dataset.b;
+  renderH2H();
+});
+
+setMetric('all');
+renderH2H();
+</script>
+</body>
+</html>
