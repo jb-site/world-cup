@@ -343,7 +343,7 @@ function renderRanking(){
       <div class="bar-pos">${i+1}</div>
       <div class="bar-main">
         <div class="bar-label">
-          <span class="bar-team"><span class="fl">${flag(d)}</span><span class="nm">${d.team}${WC_2026_TEAMS.has(d.team) ? ' 🏆' : ''}</span></span>
+          <span class="bar-team"><span class="fl">${flag(d)}</span><span class="nm">${d.team}${WC_2026_TEAMS.has(d.team) ? ' <svg style="width:1em;height:1em;vertical-align:-0.15em;margin-left:3px" viewBox="0 0 24 24"><circle cx="12" cy="6" r="4" fill="#ffd700"/><path d="M10 10C6 14 9 20 9 22h6c0-2 3-8-1-12-1 1-3 1-4 0z" fill="#daa520"/><path d="M8 22h8v2H8z" fill="#15803d"/></svg>' : ''}</span></span>
           <span class="bar-val">${fmt(val(d))}</span>
         </div>
         <div class="bar-track"><div class="bar-fill" data-w="${(val(d)/max*100).toFixed(2)}"></div></div>
