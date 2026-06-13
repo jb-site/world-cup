@@ -193,19 +193,6 @@
     <div class="metric-note" id="metricNote"></div>
   </div>
 
-  <section id="ranking">
-    <div class="sec-head">
-      <div>
-        <h2><span class="em">🏆</span> Top Footballing Nations</h2>
-        <div class="sub" id="rankSub"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="rank-list" id="rankList"></div>
-      <button class="show-more" id="showMore">Show all 208 ▾</button>
-    </div>
-  </section>
-
   <section id="h2h">
     <div class="sec-head">
       <div>
@@ -246,10 +233,32 @@
     </div>
   </section>
 
+  <section id="ranking">
+    <div class="sec-head">
+      <div>
+        <h2><span class="em">🏆</span> Top Footballing Nations</h2>
+        <div class="sub" id="rankSub"></div>
+      </div>
+      <button id="sortToggle" style="background:var(--surface-2); border:1px solid var(--border-2); color:var(--text); padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.8rem;">🔽 Descending</button>
+    </div>
+    
+    <div class="toggle-bar" style="position:static; margin: 0 0 16px 0; padding: 0; background: transparent; border: none;">
+      <div class="seg" id="filterSeg" style="background: rgba(255,255,255,.02);">
+        <span class="glider" style="width: calc(33.33% - 4px); transition: transform .28s cubic-bezier(.34,1.4,.5,1);"></span>
+        <button class="active" data-filter="all" style="font-size: .8rem; padding: 8px 4px;">🌍 All</button>
+        <button data-filter="wc" style="font-size: .8rem; padding: 8px 4px;">🏆 WC 2026</button>
+        <button data-filter="non-wc" style="font-size: .8rem; padding: 8px 4px;">❌ Non-WC</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rank-list" id="rankList"></div>
+      <button class="show-more" id="showMore">Show all 208 ▾</button>
+    </div>
+  </section>
+
   <footer>
-    <p>Source: <strong>FIFA Big Count 2006</strong> — the global football census.<br>
-    Figures are the famous one-off survey of registered &amp; unregistered players, clubs and officials.</p>
-    <p style="margin-top:8px">Built as a standalone explorer · works fully offline · share the file anywhere.</p>
+    <p>Source: <strong>FIFA Big Count 2006</strong> — the global football census.<br></p>
   </footer>
 
 </div>
@@ -274,9 +283,33 @@ function flag(d){
   return String.fromCodePoint(...[...cc].map(c=>0x1F1E6 + c.charCodeAt(0)-65));
 }
 
-let metric = 'all';                       // 'all' | 'reg'
+let metric = 'reg';                       // 'all' | 'reg'
+let currentFilter = 'all';                // 'all' | 'wc' | 'non-wc'
+let sortOrder = 'desc';                   // 'desc' | 'asc'
+
+const WC_2026_TEAMS = new Set([
+  'Mexico', 'South Africa', 'Korea Republic', 'Czech Republic', 'Canada', 
+  'Bosnia and Herzegovina', 'USA', 'Paraguay', 'Haiti', 'Scotland', 
+  'Australia', 'Turkey', 'Brazil', 'Morocco', 'Qatar', 'Switzerland', 
+  'Côte d\'Ivoire', 'Ecuador', 'Germany', 'Curacao', 'Netherlands', 
+  'Japan', 'Sweden', 'Tunisia', 'Saudi Arabia', 'Spain', 'Cape Verde Islands', 
+  'Belgium', 'Egypt', 'France', 'Senegal', 'Iraq', 'Norway', 'Argentina', 
+  'Algeria', 'Austria', 'Jordan', 'Ghana', 'Panama', 'England', 'Croatia', 
+  'Portugal', 'Congo DR', 'Uzbekistan', 'Colombia'
+]);
+
 const val = d => metric==='all' ? d.all : d.reg;
-const sorted = () => [...DATA].filter(d=>val(d)!=null).sort((a,b)=>val(b)-val(a));
+
+const sorted = () => {
+  return [...DATA]
+    .filter(d => val(d) != null)
+    .filter(d => {
+      if (currentFilter === 'wc') return WC_2026_TEAMS.has(d.team);
+      if (currentFilter === 'non-wc') return !WC_2026_TEAMS.has(d.team);
+      return true;
+    })
+    .sort((a, b) => sortOrder === 'desc' ? val(b) - val(a) : val(a) - val(b));
+};
 
 /* ---------- global stats ---------- */
 function renderGlobal(){
@@ -295,7 +328,7 @@ function renderGlobal(){
 let expanded=false;
 function renderRanking(){
   const list = sorted();
-  const max = val(list[0]);
+  const max = list.length ? val(list[0]) : 1;
   const n = expanded ? list.length : 15;
   const sub = metric==='all' ? 'Ranked by total players (registered + unregistered).'
                              : 'Ranked by officially registered players.';
@@ -305,7 +338,7 @@ function renderRanking(){
       <div class="bar-pos">${i+1}</div>
       <div class="bar-main">
         <div class="bar-label">
-          <span class="bar-team"><span class="fl">${flag(d)}</span><span class="nm">${d.team}</span></span>
+          <span class="bar-team"><span class="fl">${flag(d)}</span><span class="nm">${d.team}${WC_2026_TEAMS.has(d.team) ? ' 🏆' : ''}</span></span>
           <span class="bar-val">${fmt(val(d))}</span>
         </div>
         <div class="bar-track"><div class="bar-fill" data-w="${(val(d)/max*100).toFixed(2)}"></div></div>
@@ -422,6 +455,21 @@ document.getElementById('metricSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(b) setMetric(b.dataset.metric);
 });
 
+document.getElementById('filterSeg').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  
+  currentFilter = b.dataset.filter;
+  document.querySelectorAll('#filterSeg button').forEach(btn => btn.classList.toggle('active', btn === b));
+  
+  const glider = document.querySelector('#filterSeg .glider');
+  if (currentFilter === 'all') glider.style.transform = 'translateX(0%)';
+  if (currentFilter === 'wc') glider.style.transform = 'translateX(100%)';
+  if (currentFilter === 'non-wc') glider.style.transform = 'translateX(200%)';
+  
+  renderRanking();
+});
+
 document.getElementById('showMore').addEventListener('click',()=>{
   expanded=!expanded;
   renderRanking();
@@ -437,7 +485,13 @@ document.getElementById('wcFixtures').addEventListener('change', e => {
   renderH2H();
 });
 
-setMetric('all');
+document.getElementById('sortToggle').addEventListener('click', e => {
+  sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+  e.target.textContent = sortOrder === 'desc' ? '🔽 Descending' : '🔼 Ascending';
+  renderRanking();
+});
+
+setMetric('reg');
 renderH2H();
 </script>
 </body>
