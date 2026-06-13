@@ -196,6 +196,12 @@
   .scatter-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
   .scatter-legend .d-wc{background:linear-gradient(135deg,var(--accent-2),var(--accent))}
   .scatter-legend .d-other{background:#64748b}
+  .scatter-legend .d-trend{background:none;border-top:2px dashed var(--muted);border-radius:0;width:14px;height:0}
+  .sc-trend{fill:none;stroke:var(--muted);stroke-width:1.3;stroke-dasharray:5 4;opacity:.75}
+  .sc-ro-verdict{flex-basis:100%;font-size:.8rem;font-weight:700;margin-top:2px}
+  .sc-ro-verdict.up{color:var(--accent)}
+  .sc-ro-verdict.down{color:var(--away)}
+  .sc-ro-verdict.mid{color:var(--muted)}
 
 </style>
 </head>
@@ -287,10 +293,18 @@
     <div class="sec-head">
       <div>
         <h2><span class="em">📈</span> Players vs World Ranking</h2>
-        <div class="sub">2006 participation against the latest FIFA ranking (11 Jun 2026).</div>
+        <div class="sub">2006 players (x) against the latest FIFA ranking (y, 11 Jun 2026).</div>
       </div>
     </div>
     <div class="card">
+      <div class="toggle-bar" style="position:static; margin:0 0 12px 0; padding:0; background:transparent; border:none;">
+        <div class="seg" id="scatterTopSeg" style="background:rgba(255,255,255,.02);">
+          <span class="glider" style="width:calc(33.33% - 4px); transform:translateX(200%); transition:transform .28s cubic-bezier(.34,1.4,.5,1);"></span>
+          <button data-top="50" style="font-size:.8rem; padding:8px 4px;">Top 50</button>
+          <button data-top="100" style="font-size:.8rem; padding:8px 4px;">Top 100</button>
+          <button class="active" data-top="all" style="font-size:.8rem; padding:8px 4px;">All 211</button>
+        </div>
+      </div>
       <div class="scatter-readout" id="scatterReadout">Tap a dot to inspect a nation</div>
       <div class="scatter-wrap">
         <svg id="scatterSvg" viewBox="0 0 380 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Scatter plot of FIFA Big Count players versus latest FIFA world ranking"></svg>
@@ -298,8 +312,9 @@
       <div class="scatter-legend">
         <span><i class="d-wc"></i>WC 2026 team</span>
         <span><i class="d-other"></i>Other nation</span>
+        <span><i class="d-trend"></i>Trend</span>
       </div>
-      <div class="metric-note" style="margin-top:10px">Y-axis follows the Total / Registered toggle · 207 of 208 associations have a current FIFA ranking.</div>
+      <div class="metric-note" style="margin-top:10px">Dots <strong>above</strong> the trend line punch above their weight — better ranked than their player base predicts. Players axis follows the Total / Registered toggle.</div>
     </div>
   </section>
 
@@ -528,42 +543,73 @@ function renderH2H(){
 
 /* ---------- players vs FIFA ranking scatter ---------- */
 let scatterSel = null;     // selected team name
-let scatterPts = [];       // [{team,rank,v,wc,flag,cx,cy}]
+let scatterPts = [];       // [{team,rank,v,wc,flag,cx,cy,over}]
+let scatterTop = 'all';    // 'all' | '100' | '50'  (top-N by ranking)
 const SC_VB = {w:380, h:300};
+
+function rankTicks(end){
+  if(end<=50)  return [1,10,20,30,40,50];
+  if(end<=100) return [1,25,50,75,100];
+  return [1,50,100,150,200];
+}
 
 function renderScatter(){
   const svg = document.getElementById('scatterSvg');
   if(!svg) return;
-  const m = {t:16, r:14, b:42, l:48};
+  const m = {t:18, r:16, b:40, l:50};
   const pw = SC_VB.w - m.l - m.r, ph = SC_VB.h - m.t - m.b;
 
-  const data = DATA
+  // every ranked team for the current metric (used to fit the trend)
+  const all = DATA
     .filter(d => FIFA_RANK[d.team] != null && val(d) > 0)
     .map(d => ({team:d.team, rank:FIFA_RANK[d.team], v:val(d), wc:WC_2026_TEAMS.has(d.team), flag:flag(d)}));
 
-  const xMax = Math.max(SCATTER_RANK_MAX, ...data.map(p=>p.rank));
-  const X = r => m.l + (r-1)/(xMax-1)*pw;
+  // least-squares fit: rank ≈ a + b·log10(players), over ALL ranked teams
+  const lx = all.map(p=>Math.log10(p.v)), ry = all.map(p=>p.rank);
+  const mx = lx.reduce((s,x)=>s+x,0)/lx.length, my = ry.reduce((s,y)=>s+y,0)/ry.length;
+  let num=0, den=0;
+  for(let i=0;i<lx.length;i++){ num+=(lx[i]-mx)*(ry[i]-my); den+=(lx[i]-mx)**2; }
+  const b=num/den, a=my-b*mx;
+  const predRank = v => a + b*Math.log10(v);
+
+  // visible set, limited by the top-N ranking filter
+  const yEnd = scatterTop==='50' ? 50 : scatterTop==='100' ? 100 : SCATTER_RANK_MAX;
+  const data = all.filter(p => p.rank <= yEnd);
+
+  // x = players (log), domain from the visible points; y = rank, reversed (1 at top)
   const lo = Math.floor(Math.log10(Math.min(...data.map(p=>p.v))));
   const hi = Math.ceil (Math.log10(Math.max(...data.map(p=>p.v))));
-  const Y = v => m.t + ph - (Math.log10(v)-lo)/(hi-lo)*ph;
+  const X = v => m.l + (Math.log10(v)-lo)/(hi-lo)*pw;
+  const Y = r => m.t + (r-1)/(yEnd-1)*ph;
 
   let g='';
   for(let e=lo; e<=hi; e++){
-    const yy=Y(Math.pow(10,e));
-    g+=`<line class="sc-grid" x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+pw}" y2="${yy.toFixed(1)}"/>`;
-    g+=`<text class="sc-tick y" x="${m.l-6}" y="${(yy+3).toFixed(1)}">${compact(Math.pow(10,e))}</text>`;
-  }
-  [1,50,100,150,200].filter(t=>t<=xMax).forEach(t=>{
-    const xx=X(t);
+    const xx=X(Math.pow(10,e));
     g+=`<line class="sc-grid" x1="${xx.toFixed(1)}" y1="${m.t}" x2="${xx.toFixed(1)}" y2="${m.t+ph}"/>`;
-    g+=`<text class="sc-tick x" x="${xx.toFixed(1)}" y="${m.t+ph+14}">${t}</text>`;
+    g+=`<text class="sc-tick x" x="${xx.toFixed(1)}" y="${m.t+ph+14}">${compact(Math.pow(10,e))}</text>`;
+  }
+  rankTicks(yEnd).filter(t=>t<=yEnd).forEach(t=>{
+    const yy=Y(t);
+    g+=`<line class="sc-grid" x1="${m.l}" y1="${yy.toFixed(1)}" x2="${m.l+pw}" y2="${yy.toFixed(1)}"/>`;
+    g+=`<text class="sc-tick y" x="${m.l-6}" y="${(yy+3).toFixed(1)}">${t}</text>`;
   });
-  g+=`<text class="sc-axtitle" x="${m.l+pw/2}" y="${SC_VB.h-5}">FIFA ranking  ·  1 = best  →  weaker</text>`;
-  g+=`<text class="sc-axtitle" transform="translate(11 ${m.t+ph/2}) rotate(-90)">Players (log scale)</text>`;
+  g+=`<text class="sc-axtitle" x="${m.l+pw/2}" y="${SC_VB.h-4}">Players (log scale)</text>`;
+  g+=`<text class="sc-axtitle" transform="translate(12 ${m.t+ph/2}) rotate(-90)">FIFA ranking · 1 = best</text>`;
 
-  scatterPts = data.map(p=>({...p, cx:X(p.rank), cy:Y(p.v)}));
+  // trend line, sampled across the x-domain and clipped to the visible rank window
+  let trend='';
+  const seg=[];
+  for(let i=0;i<=60;i++){
+    const v=Math.pow(10, lo+(hi-lo)*i/60);
+    const r=predRank(v);
+    if(r>=1 && r<=yEnd) seg.push(`${X(v).toFixed(1)},${Y(r).toFixed(1)}`);
+  }
+  if(seg.length>1) trend=`<polyline class="sc-trend" points="${seg.join(' ')}"/>`;
+
+  // over = predicted rank − actual rank; positive ⇒ better than expected (overperform)
+  scatterPts = data.map(p=>({...p, cx:X(p.v), cy:Y(p.rank), over:predRank(p.v)-p.rank}));
   const dots = scatterPts.map((p,i)=>
-    `<circle class="sc-dot ${p.wc?'wc':'other'}" data-team="${p.team.replace(/"/g,'&quot;')}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="0" style="transition-delay:${i*4}ms"/>`
+    `<circle class="sc-dot ${p.wc?'wc':'other'}" data-team="${p.team.replace(/"/g,'&quot;')}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="0" style="transition-delay:${i*3}ms"/>`
   ).join('');
 
   svg.innerHTML =
@@ -572,7 +618,7 @@ function renderScatter(){
     g+
     `<line class="sc-axis" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t+ph}"/>`+
     `<line class="sc-axis" x1="${m.l}" y1="${m.t+ph}" x2="${m.l+pw}" y2="${m.t+ph}"/>`+
-    dots+`<g id="scLabel"></g>`;
+    trend + dots + `<g id="scLabel"></g>`;
 
   requestAnimationFrame(()=>svg.querySelectorAll('.sc-dot').forEach(c=>c.setAttribute('r','3.4')));
 
@@ -597,8 +643,16 @@ function drawScatterSel(){
     lab.innerHTML=`<text class="sc-lab" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle">${p.team}</text>`;
   } else lab.innerHTML='';
   const ro=document.getElementById('scatterReadout');
-  if(p) ro.innerHTML=`<span class="sc-ro-flag">${p.flag}</span><span class="sc-ro-team">${p.team}</span>`+
-    `<span class="sc-ro-meta">FIFA #${p.rank} · ${fmt(p.v)} ${metric==='all'?'players':'registered'}</span>`;
+  if(p){
+    const d=Math.round(p.over);
+    let verdict, cls;
+    if(d>1){ verdict=`▲ Overperforming · ${d} places above trend`; cls='up'; }
+    else if(d<-1){ verdict=`▼ Underperforming · ${-d} places below trend`; cls='down'; }
+    else { verdict='● Right on the trend line'; cls='mid'; }
+    ro.innerHTML=`<span class="sc-ro-flag">${p.flag}</span><span class="sc-ro-team">${p.team}</span>`+
+      `<span class="sc-ro-meta">FIFA #${p.rank} · ${fmt(p.v)} ${metric==='all'?'players':'registered'}</span>`+
+      `<span class="sc-ro-verdict ${cls}">${verdict}</span>`;
+  }
 }
 
 function scatterPick(evt){
@@ -656,6 +710,15 @@ document.getElementById('filterSeg').addEventListener('click', e => {
 document.getElementById('showMore').addEventListener('click',()=>{
   expanded=!expanded;
   renderRanking();
+});
+
+document.getElementById('scatterTopSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  scatterTop = b.dataset.top;
+  document.querySelectorAll('#scatterTopSeg button').forEach(btn => btn.classList.toggle('active', btn === b));
+  const glider = document.querySelector('#scatterTopSeg .glider');
+  glider.style.transform = `translateX(${ {50:0, 100:100, all:200}[scatterTop] }%)`;
+  renderScatter();
 });
 
 document.getElementById('selA').addEventListener('change', renderH2H);
